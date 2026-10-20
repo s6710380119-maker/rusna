@@ -1,0 +1,299 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile with role-based access control and account status",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Unique Firebase Authentication user UID"
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 150,
+          "description": "User email address"
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Full name or nickname of user"
+        },
+        "photoURL": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Avatar or profile picture URL"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["member", "admin"],
+          "description": "Role in the system: member or admin"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "suspended"],
+          "description": "Account activity status"
+        },
+        "bio": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Short bio or teaching/study subjects"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of account creation"
+        }
+      },
+      "required": ["uid", "email", "displayName", "role", "status", "createdAt"]
+    },
+    "Resource": {
+      "title": "Educational Resource",
+      "description": "Knowledge item, worksheet, video, or link uploaded or shared by a member",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200,
+          "description": "Title of the learning resource"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Details, learning objectives, and summary"
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Subject category (e.g. คอมพิวเตอร์, วิทยาศาสตร์, คณิตศาสตร์)"
+        },
+        "educationLevel": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Target audience level (ประถม, มัธยม, อุดมศึกษา, ครู/ทั่วไป)"
+        },
+        "mediaType": {
+          "type": "string",
+          "enum": ["video", "pdf", "website", "document", "slide", "other"],
+          "description": "Format of learning material"
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "External resource link, YouTube URL, or drive link"
+        },
+        "authorId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "UID of the creator"
+        },
+        "authorName": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Display name of the author"
+        },
+        "authorEmail": {
+          "type": "string",
+          "maxLength": 150,
+          "description": "Email of the author"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["published", "hidden"],
+          "description": "Public visibility status"
+        },
+        "viewCount": {
+          "type": "number",
+          "description": "Number of times viewed"
+        },
+        "favoriteCount": {
+          "type": "number",
+          "description": "Number of times bookmarked"
+        },
+        "reportCount": {
+          "type": "number",
+          "description": "Count of reports received"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last updated timestamp"
+        }
+      },
+      "required": ["title", "category", "educationLevel", "mediaType", "url", "authorId", "status", "createdAt"]
+    },
+    "Favorite": {
+      "title": "Favorite Bookmark",
+      "description": "Saved bookmark reference for a user",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "User UID who bookmarked"
+        },
+        "resourceId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Bookmarked resource ID"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Bookmark timestamp"
+        }
+      },
+      "required": ["userId", "resourceId", "createdAt"]
+    },
+    "Report": {
+      "title": "Content Report",
+      "description": "Report filed by a user against inappropriate or broken resources",
+      "type": "object",
+      "properties": {
+        "resourceId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Reported resource ID"
+        },
+        "resourceTitle": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Title of reported resource"
+        },
+        "reporterId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "UID of reporting user"
+        },
+        "reporterEmail": {
+          "type": "string",
+          "maxLength": 150,
+          "description": "Email of reporting user"
+        },
+        "reason": {
+          "type": "string",
+          "enum": ["broken_link", "copyright", "inappropriate", "spam", "other"],
+          "description": "Category of violation"
+        },
+        "details": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Additional context from reporter"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "resolved", "dismissed"],
+          "description": "Resolution status"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp filed"
+        }
+      },
+      "required": ["resourceId", "reporterId", "reason", "status", "createdAt"]
+    },
+    "ModerationLog": {
+      "title": "Moderation Log",
+      "description": "Audit trail for moderator actions",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Action performed (e.g. hide_resource, delete_resource, suspend_user)"
+        },
+        "targetResourceId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Target resource ID if applicable"
+        },
+        "targetUserId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Target user ID if applicable"
+        },
+        "performedByUid": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Admin UID who took action"
+        },
+        "performedByEmail": {
+          "type": "string",
+          "maxLength": 150,
+          "description": "Admin email who took action"
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Notes or reason"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Action timestamp"
+        }
+      },
+      "required": ["action", "performedByUid", "performedByEmail", "timestamp"]
+    },
+    "SiteSettings": {
+      "title": "Platform Settings",
+      "description": "Configurable platform title, announcements, and dynamic category masterlist",
+      "type": "object",
+      "properties": {
+        "siteName": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Website title"
+        },
+        "siteDescription": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Short site description"
+        },
+        "announcement": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Notice banner at top of site"
+        },
+        "updatedBy": {
+          "type": "string",
+          "maxLength": 150,
+          "description": "Email of last modifier"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp of update"
+        }
+      },
+      "required": ["siteName", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles indexed by UID with roles and status"
+    },
+    "/resources/{resourceId}": {
+      "schema": "Resource",
+      "description": "Curated educational resources and media links"
+    },
+    "/favorites/{favoriteId}": {
+      "schema": "Favorite",
+      "description": "User saved bookmarks (composite id: userId_resourceId)"
+    },
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Content flags and inappropriate resource reports"
+    },
+    "/moderationLogs/{logId}": {
+      "schema": "ModerationLog",
+      "description": "Audit logs for moderation and administrative actions"
+    },
+    "/settings/{settingId}": {
+      "schema": "SiteSettings",
+      "description": "Site-wide customizable configurations and announcements"
+    }
+  }
+}

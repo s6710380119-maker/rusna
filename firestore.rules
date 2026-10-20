@@ -1,0 +1,155 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Admin bootstrap check: Runtime developer email or designated admin doc/role
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 's6710380119@pkru.ac.th' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    // --- Users Collection ---
+    match /users/{userId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+        && request.auth.uid == userId
+        && incoming().uid == userId
+        && incoming().displayName is string
+        && incoming().displayName.size() > 0
+        && incoming().displayName.size() <= 100
+        && (
+          incoming().role == 'member' ||
+          (request.auth.token.email == 's6710380119@pkru.ac.th' && incoming().role == 'admin')
+        )
+        && incoming().status == 'active';
+
+      allow update: if isSignedIn() && (
+        // Regular user updating own profile (cannot alter role, status, uid, email, createdAt)
+        (
+          request.auth.uid == userId
+          && !incoming().diff(existing()).affectedKeys().hasAny(['role', 'status', 'uid', 'email', 'createdAt'])
+          && incoming().displayName is string
+          && incoming().displayName.size() > 0
+          && incoming().displayName.size() <= 100
+        ) ||
+        // Admin can update status, role, etc.
+        isAdmin()
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // --- Resources Collection ---
+    match /resources/{resourceId} {
+      // Public can read published resources. Authors and Admins can also read hidden resources.
+      allow read: if resource.data.status == 'published'
+        || (isSignedIn() && (resource.data.authorId == request.auth.uid || isAdmin()));
+
+      allow create: if isSignedIn()
+        && incoming().authorId == request.auth.uid
+        && incoming().title is string
+        && incoming().title.size() >= 3
+        && incoming().title.size() <= 200
+        && incoming().category is string
+        && incoming().category.size() <= 60
+        && incoming().educationLevel is string
+        && incoming().educationLevel.size() <= 60
+        && incoming().mediaType in ['video', 'pdf', 'website', 'document', 'slide', 'other']
+        && incoming().url is string
+        && incoming().url.size() <= 1000
+        && incoming().status in ['published', 'hidden'];
+
+      allow update: if isSignedIn() && (
+        // Author updating their own resource
+        (
+          resource.data.authorId == request.auth.uid
+          && incoming().authorId == existing().authorId
+          && incoming().createdAt == existing().createdAt
+          && incoming().title is string
+          && incoming().title.size() >= 3
+          && incoming().title.size() <= 200
+          && incoming().mediaType in ['video', 'pdf', 'website', 'document', 'slide', 'other']
+          && incoming().status in ['published', 'hidden']
+        )
+        // Public/Users interacting (incrementing viewCount or favoriteCount or reportCount)
+        || (
+          incoming().diff(existing()).affectedKeys().hasOnly(['viewCount', 'favoriteCount', 'reportCount'])
+        )
+        // Admin full update authority
+        || isAdmin()
+      );
+
+      allow delete: if isSignedIn() && (resource.data.authorId == request.auth.uid || isAdmin());
+    }
+
+    // --- Favorites Collection ---
+    match /favorites/{favoriteId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn()
+        && incoming().userId == request.auth.uid
+        && incoming().resourceId is string
+        && incoming().resourceId.size() <= 128;
+
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // --- Reports Collection ---
+    match /reports/{reportId} {
+      // Admins and the original reporter can read reports
+      allow read: if isAdmin() || (isSignedIn() && resource.data.reporterId == request.auth.uid);
+
+      allow create: if isSignedIn()
+        && incoming().reporterId == request.auth.uid
+        && incoming().reason in ['broken_link', 'copyright', 'inappropriate', 'spam', 'other']
+        && incoming().status == 'pending'
+        && incoming().resourceId is string
+        && incoming().resourceId.size() <= 128;
+
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // --- Moderation Logs Collection ---
+    match /moderationLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && incoming().performedByUid == request.auth.uid;
+      allow update: if false; // Audit logs are immutable
+      allow delete: if false;
+    }
+
+    // --- Settings Collection ---
+    match /settings/{settingId} {
+      // Anyone can read general settings (site title, announcement, categories)
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
